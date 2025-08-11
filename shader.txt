@@ -1,0 +1,264 @@
+// "空想の海" - Inspired by Midori Noyama's "Sea of Fantasy"
+// Visualization of layered realities, perspective shifts, and haunting memories
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
+    float time = iTime;
+    
+    // Water refraction distortion - 水の屈折による歪み
+    vec2 refractionOffset = vec2(
+        sin(uv.y * 15.0 + time * 2.0) * sin(uv.x * 8.0 + time * 1.5),
+        cos(uv.x * 12.0 + time * 1.8) * cos(uv.y * 10.0 + time * 2.2)
+    ) * 0.02;
+    
+    // Secondary refraction layer for more complex distortion
+    vec2 refractionOffset2 = vec2(
+        sin(uv.y * 25.0 - time * 1.2) * cos(uv.x * 18.0 + time * 0.8),
+        cos(uv.x * 20.0 - time * 1.6) * sin(uv.y * 15.0 + time * 1.3)
+    ) * 0.015;
+    
+    // Apply water distortion to UV coordinates
+    vec2 distortedUV = uv + refractionOffset + refractionOffset2;
+    
+    // Use distorted UV for main calculations
+    uv = mix(uv, distortedUV, 0.7); // Blend original and distorted for subtle effect
+    
+    // Deep sea currents and waves
+    vec2 waveUV = uv;
+    waveUV.x += sin(uv.y * 3.0 + time * 0.8) * 0.1;
+    waveUV.y += cos(uv.x * 2.5 + time * 0.6) * 0.08;
+    
+    // Multiple depth layers of the ocean
+    float depth1 = sin(waveUV.x * 4.0 + time * 0.5) * sin(waveUV.y * 3.5 + time * 0.7);
+    float depth2 = sin(waveUV.x * 7.0 + time * 0.3) * sin(waveUV.y * 6.0 + time * 0.9);
+    float depth3 = sin(waveUV.x * 12.0 + time * 0.2) * sin(waveUV.y * 10.0 + time * 1.1);
+    
+    // Base color - deep ocean depths with varying tones
+    vec3 deepBlue = vec3(0.01, 0.03, 0.08);
+    vec3 midBlue = vec3(0.02, 0.08, 0.15);
+    vec3 darkTeal = vec3(0.01, 0.06, 0.12);
+    
+    vec3 color = mix(deepBlue, midBlue, depth1 * 0.5 + 0.5);
+    color = mix(color, darkTeal, depth2 * 0.3 + 0.3);
+    color += vec3(0.005, 0.01, 0.02) * depth3;
+    
+    // Ocean surface waves at the top of the screen
+    // 画面上部の海面の波
+    if(uv.y > 0.3) {
+        float waveHeight = 0.6; // Start waves from this Y position
+        float surfaceArea = smoothstep(waveHeight, waveHeight + 0.2, uv.y);
+        
+        // Multiple wave layers for realistic ocean surface
+        float wave1 = sin(uv.x * 8.0 + time * 2.0) * 0.03;
+        float wave2 = sin(uv.x * 15.0 - time * 1.5) * 0.02;
+        float wave3 = sin(uv.x * 25.0 + time * 3.0) * 0.015;
+        float totalWave = wave1 + wave2 + wave3;
+        
+        // Wave surface position
+        float waveSurface = waveHeight + totalWave;
+        
+        // Create wave shape
+        float waveIntensity = smoothstep(waveSurface - 0.02, waveSurface + 0.02, uv.y);
+        waveIntensity *= surfaceArea;
+        
+        // Surface reflection colors
+        vec3 surfaceColor = vec3(0.4, 0.7, 0.9); // bright blue-white
+        vec3 waveHighlight = vec3(0.8, 0.9, 1.0); // white foam
+        
+        // Add wave foam and highlights
+        float foam = sin(uv.x * 30.0 + time * 4.0) * sin(uv.x * 40.0 - time * 3.0);
+        foam = smoothstep(0.7, 1.0, foam) * waveIntensity;
+        
+        // Sun reflection on waves
+        float sunReflection = sin(uv.x * 12.0 + time * 1.0);
+        sunReflection = pow(max(sunReflection, 0.0), 4.0) * waveIntensity * 0.5;
+        
+        color = mix(color, surfaceColor, waveIntensity * 0.7);
+        color += waveHighlight * foam * 0.3;
+        color += vec3(1.0, 0.9, 0.7) * sunReflection;
+    }
+    
+    // Floating earth rings - "土星の輪のように地球の周りを回る"
+    // Represents the surreal world where gravity-defying soil orbits Earth
+    for(int i = 0; i < 3; i++) {
+        float ringRadius = 0.3 + float(i) * 0.15;
+        float angle = time * 0.3 + float(i) * 2.0;
+        
+        // Add underwater current distortion to rings
+        vec2 currentFlow = vec2(
+            sin(time * 0.4 + float(i)) * 0.05,
+            cos(time * 0.3 + float(i) * 1.5) * 0.03
+        );
+        vec2 ringCenter = vec2(cos(angle), sin(angle)) * 0.2 + currentFlow;
+        
+        float dist = abs(length(uv - ringCenter) - ringRadius);
+        float ring = smoothstep(0.01, 0.005, dist);
+        
+        // Earthy, soil-like colors with underwater filtering
+        vec3 earthColor = mix(
+            vec3(0.3, 0.2, 0.08),  // darker earth underwater
+            vec3(0.5, 0.35, 0.15), // muted soil tones
+            sin(angle * 3.0 + float(i)) * 0.5 + 0.5
+        );
+        
+        // Add blue-green tint from water filtering
+        earthColor = mix(earthColor, vec3(0.1, 0.3, 0.2), 0.3);
+        
+        color += ring * earthColor * 0.6;
+    }
+    
+    // Perspective layers - representing the first/second person narrative confusion
+    // "あなた"という第二人称と第一人称の違和感
+    float layers = 4.0;
+    for(float layer = 0.0; layer < layers; layer += 1.0) {
+        // Add oceanic drift to each layer
+        vec2 layerUV = uv * (1.0 + layer * 0.1);
+        layerUV += vec2(
+            sin(time * 0.4 + layer) + sin(time * 0.15 + layer * 2.0) * 0.5,
+            cos(time * 0.3 + layer) + cos(time * 0.22 + layer * 1.5) * 0.3
+        ) * 0.1;
+        
+        // Underwater caustic-like patterns
+        float interference = sin(layerUV.x * 10.0 + time + layer) * 
+                           sin(layerUV.y * 8.0 + time * 1.2 + layer);
+        interference += sin(layerUV.x * 15.0 - time * 0.8) * 0.3; // caustic shimmer
+        interference = smoothstep(0.2, 0.8, interference);
+        
+        // Ocean-tinted layer colors with depth variation
+        vec3 layerColor = vec3(
+            0.05 + 0.15 * sin(layer + time * 0.5),
+            0.1 + 0.25 * cos(layer * 1.3 + time * 0.7),
+            0.2 + 0.3 * sin(layer * 0.7 + time * 0.3)
+        );
+        
+        // Add deeper ocean tones
+        layerColor = mix(layerColor, vec3(0.02, 0.08, 0.15), 0.6);
+        
+        color += interference * layerColor * 0.15 * (layers - layer) / layers;
+    }
+    
+    // Central vortex - the narrative trap, the protagonist being "played" by the government
+    // 政府側から泳がされていた男の運命
+    vec2 center = vec2(0.0);
+    float centerDist = length(uv - center);
+    float spiral = atan(uv.y - center.y, uv.x - center.x) + time * 2.0;
+    
+    // Add underwater whirlpool motion
+    float whirlpool = sin(spiral * 5.0 - centerDist * 15.0 + time * 3.0);
+    whirlpool += sin(spiral * 8.0 - centerDist * 20.0 + time * 2.0) * 0.5; // secondary spiral
+    whirlpool *= exp(-centerDist * 2.0); // fade with distance
+    whirlpool = smoothstep(0.1, 0.9, whirlpool);
+    
+    // Deep ocean trench colors - dark blues and greens
+    vec3 fateColor = mix(
+        vec3(0.4, 0.05, 0.05), // deep red
+        vec3(0.02, 0.1, 0.2),  // abyss blue
+        centerDist
+    );
+    color += whirlpool * fateColor * 0.5;
+    
+    // Floating memories - books and knowledge fragments
+    // 本好きの父親の蔵書と魔物との問答
+    for(int i = 0; i < 8; i++) {
+        float bookAngle = time * 0.2 + float(i) * 0.785; // pi/4
+        float bookRadius = 0.4 + 0.2 * sin(time * 0.3 + float(i));
+        vec2 bookPos = vec2(cos(bookAngle), sin(bookAngle)) * bookRadius;
+        
+        float bookDist = length(uv - bookPos);
+        float book = smoothstep(0.03, 0.01, bookDist);
+        
+        // Warm book colors - knowledge and memory
+        vec3 bookColor = vec3(0.8, 0.7, 0.4);
+        color += book * bookColor * 0.5;
+        
+        // Text-like patterns around books
+        float textPattern = sin((uv.x - bookPos.x) * 50.0) * 
+                           sin((uv.y - bookPos.y) * 30.0);
+        textPattern = smoothstep(0.7, 0.9, textPattern);
+        textPattern *= smoothstep(0.1, 0.05, bookDist);
+        
+        color += textPattern * vec3(0.9, 0.8, 0.6) * 0.2;
+    }
+    
+    // Spectral observer - the ghost's perspective
+    // 殺された反政府ゲリラの亡霊の視点
+    vec2 ghostPos = vec2(sin(time * 0.1) * 0.3, cos(time * 0.15) * 0.2);
+    float ghostInfluence = 1.0 / (1.0 + length(uv - ghostPos) * 3.0);
+    
+    // Enhanced spectral distortion with water refraction
+    vec2 spectralDistortion = ghostInfluence * vec2(
+        sin(uv.y * 10.0 + time * 2.0),
+        cos(uv.x * 12.0 + time * 1.5)
+    ) * 0.1;
+    
+    // Additional refraction around the ghost
+    vec2 ghostRefraction = vec2(
+        sin(length(uv - ghostPos) * 20.0 + time * 3.0),
+        cos(length(uv - ghostPos) * 25.0 - time * 2.5)
+    ) * ghostInfluence * 0.03;
+    
+    vec2 ghostDistortedUV = uv + spectralDistortion + ghostRefraction;
+    
+    // Add ethereal glow with refraction shimmer
+    float spectralGlow = ghostInfluence * 0.3;
+    float refractionShimmer = sin(length(uv - ghostPos) * 30.0 + time * 4.0) * ghostInfluence;
+    spectralGlow += refractionShimmer * 0.1;
+    
+    vec3 spectralColor = vec3(0.3, 0.5, 0.8); // cool, otherworldly blue
+    color += spectralGlow * spectralColor;
+    
+    // War cycles - repeating patterns representing recurring conflicts
+    // 再び同じような戦争が繰り返されている日本
+    float warPattern = sin(uv.x * 5.0 + time) * sin(uv.y * 5.0 + time * 1.1);
+    warPattern = pow(abs(warPattern), 3.0);
+    warPattern *= sin(time * 0.5) * 0.5 + 0.5; // pulsing
+    
+    vec3 warColor = vec3(0.5, 0.2, 0.1); // burnt orange-red
+    color += warPattern * warColor * 0.1;
+    
+    // Final processing - add depth and underwater atmosphere
+    // Water refraction intensity based on depth
+    float refractionIntensity = mix(0.5, 1.0, (uv.y + 1.0) * 0.5);
+    
+    // Additional global refraction effect
+    vec2 globalRefraction = vec2(
+        sin(time * 0.8 + uv.y * 8.0) * cos(time * 0.6 + uv.x * 6.0),
+        cos(time * 0.9 + uv.x * 7.0) * sin(time * 0.7 + uv.y * 9.0)
+    ) * 0.008 * refractionIntensity;
+    
+    // Apply subtle color shifting due to refraction
+    vec3 refractedColor = color;
+    refractedColor.r = mix(color.r, color.g, globalRefraction.x * 10.0);
+    refractedColor.b = mix(color.b, color.r, globalRefraction.y * 8.0);
+    color = mix(color, refractedColor, 0.3);
+    
+    // Ocean depth gradient
+    float depthGradient = 1.0 - (uv.y + 1.0) * 0.3; // darker toward bottom
+    color *= mix(vec3(0.7, 0.9, 1.0), vec3(0.3, 0.5, 0.8), depthGradient);
+    
+    // Enhanced underwater caustics effect with refraction
+    float caustics = sin(uv.x * 20.0 + time * 2.0 + globalRefraction.x * 50.0) * 
+                    sin(uv.y * 15.0 + time * 1.5 + globalRefraction.y * 40.0);
+    caustics += sin(uv.x * 35.0 - time * 1.8) * sin(uv.y * 28.0 + time * 2.2) * 0.5;
+    caustics = pow(max(caustics, 0.0), 3.0) * 0.1;
+    color += vec3(0.1, 0.2, 0.3) * caustics;
+    
+    // Vignette effect with oceanic tint
+    float vignette = 1.0 - length(uv) * 0.4;
+    vignette = smoothstep(0.3, 1.0, vignette);
+    color *= vignette;
+    
+    // Add subtle underwater fog/particle effect
+    float particles = sin(uv.x * 100.0 + time * 5.0) * sin(uv.y * 80.0 + time * 4.0);
+    particles = smoothstep(0.9, 1.0, particles) * 0.05;
+    color += vec3(0.05, 0.1, 0.15) * particles;
+    
+    // Ocean color grading for that deep sea feeling
+    color = pow(color, vec3(0.85)); // enhance contrast
+    color *= 1.1; // slight brightness boost
+    
+    // Add blue-green ocean filter
+    color = mix(color, color * vec3(0.7, 0.9, 1.2), 0.3);
+    
+    fragColor = vec4(color, 1.0);
+}
